@@ -109,6 +109,7 @@ pub fn initialize_stake_account<'info>(
     if need_to_transfer > 0 {
         instructions::transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), need_to_transfer)?;
     }
+    instructions::try_rebalance(sys_stake_state, rent, native_vault, stake_amount)?;
     
     
     let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
