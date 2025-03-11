@@ -1,5 +1,6 @@
 pub mod initialize_account;
 pub mod delegate_stake;
+pub mod initialize;
 
 use anchor_lang::prelude::{Account, AccountInfo, Clock, Rent, StakeHistory, SystemAccount, Sysvar, UncheckedAccount};
 use anchor_lang::error::Error;
@@ -7,6 +8,7 @@ use anchor_lang::solana_program::stake;
 use anchor_lang::{solana_program, Key, ToAccountInfo};
 pub use initialize_account::*;
 pub use delegate_stake::*;
+pub use initialize::*;
 use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken};
 use crate::instructions;
 use crate::stake_info::StakeInfo;
@@ -29,7 +31,7 @@ fn rebalance<'info>(
     stake_info: &Account<'info, StakeInfo>,
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
-    native_vault: &SystemAccount<'info>,
+    native_vault: &UncheckedAccount<'info>,
     clock: &Sysvar<'info, Clock>,
     stake_history: &Sysvar<'info, StakeHistory>,
     stake_info_seeds: &[&[&[u8]]],
@@ -53,7 +55,7 @@ fn rebalance<'info>(
 fn try_rebalance<'info>(
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
-    native_vault: &SystemAccount<'info>,
+    native_vault: &UncheckedAccount<'info>,
     stake_amount: u64
 ) -> anchor_lang::Result<()> {
     // check sol balance
@@ -74,7 +76,7 @@ fn sys_stake_withdraw<'info>(stake_info: &Account<'info, StakeInfo>,
                              sys_stake_state: &UncheckedAccount<'info>,
                              clock: &Sysvar<'info, Clock>,
                              stake_history: &Sysvar<'info, StakeHistory>,
-                             native_vault: &SystemAccount<'info>,
+                             native_vault: &UncheckedAccount<'info>,
                              stake_info_seeds: &[&[&[u8]]],
                              withdraw_amount: u64) -> anchor_lang::Result<()> {
     let ix = stake::instruction::withdraw(&sys_stake_state.key(), &stake_info.key(), &native_vault.key(), withdraw_amount, None);

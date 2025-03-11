@@ -10,4 +10,6 @@ pub enum ErrorCode {
     NeedMoreStakeToken,
     #[msg("Stake token mint mismatch")]
     StakeTokenMintMismatch,
+    #[msg("Stake amount too small")]
+    StakeAmountTooSmall,
 }

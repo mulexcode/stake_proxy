@@ -1,8 +1,10 @@
 use anchor_lang::prelude::*;
 
-pub const STAKE_TOKEN_MINT: Pubkey = pubkey!("StakeToken111111111111111111111111111111111");
+#[cfg(feature="localnet")]
+pub const STAKE_TOKEN_MINT: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
 
-pub const NATIVE_TOKEN_VAULT: Pubkey = pubkey!("StakeVau1t111111111111111111111111111111111");
+#[cfg(not(feature="localnet"))]
+pub const STAKE_TOKEN_MINT: Pubkey = pubkey!("StakeToken111111111111111111111111111111111");
 
 #[constant]
 pub const STAKE_STATE_SEED: &str = "stake_state";

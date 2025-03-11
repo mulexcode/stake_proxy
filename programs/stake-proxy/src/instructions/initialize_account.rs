@@ -4,7 +4,7 @@ use anchor_lang::solana_program::stake::state::{Authorized, Lockup, StakeStateV2
 use anchor_lang::solana_program::stake;
 use crate::stake_info::StakeInfo;
 use crate::state::*;
-use crate::constants::{NATIVE_TOKEN_VAULT, NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT};
+use crate::constants::{NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT};
 
 use anchor_spl::{associated_token, associated_token::AssociatedToken, token, token::{Mint, Token, TokenAccount}};
 use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken, StakeTokenMintMismatch};
@@ -24,7 +24,7 @@ pub struct InitializeAccount<'info> {
     )]
     pub stake_info: Account<'info, StakeInfo>,
 
-    /// CHECK: stake state
+    /// CHECK: stake::initialize() will check its ownership
     #[account(mut)]
     pub sys_stake_state: UncheckedAccount<'info>, // system stake account
 
@@ -36,23 +36,20 @@ pub struct InitializeAccount<'info> {
     )]
     pub token_payer: Account<'info, TokenAccount>,
 
-    /// CHECK: no need to check
-    pub staker: UncheckedAccount<'info>,
-    /// CHECK: no need to check
-    pub withdrawer: UncheckedAccount<'info>,
-
     /// The vault that holds the token.
     #[account(init_if_needed, payer = payer,
         associated_token::mint = token_mint,
         associated_token::authority = native_vault,
     )]
     pub token_vault: Account<'info, TokenAccount>,
+    
+    /// CHECK: check its ownership
     #[account(
         mut,
         seeds = [NATIVE_VAULT_SEED.as_bytes()],
         bump
     )]
-    pub native_vault: SystemAccount<'info>, // init in genesis block
+    pub native_vault: UncheckedAccount<'info>, // should init in genesis block
 
     #[account(address = STAKE_TOKEN_MINT @ StakeTokenMintMismatch)]
     pub token_mint: Account<'info, Mint>, // init in genesis block
@@ -65,6 +62,8 @@ pub struct InitializeAccount<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeAccountArgs {
     pub amount: u64,
+    pub staker: Pubkey,
+    pub withdrawer: Pubkey,
 }
 
 pub fn handler(ctx: Context<InitializeAccount>, args: InitializeAccountArgs) -> Result<()> {
@@ -79,13 +78,13 @@ pub fn handler(ctx: Context<InitializeAccount>, args: InitializeAccountArgs) -> 
         ),
         args.amount,
     )?;
-    
+
     initialize_stake_account(&ctx.accounts.stake_info, &ctx.accounts.sys_stake_state, &ctx.accounts.rent, &ctx.accounts.native_vault, ctx.bumps.stake_info, args.amount)?;
-    
+
     ctx.accounts.stake_info.amount = args.amount;
-    ctx.accounts.stake_info.staker_pubkey = ctx.accounts.staker.key();
-    ctx.accounts.stake_info.withdrawer_pubkey = ctx.accounts.withdrawer.key();
-    
+    ctx.accounts.stake_info.staker_pubkey = args.staker;
+    ctx.accounts.stake_info.withdrawer_pubkey = args.withdrawer;
+
     Ok(())
 }
 
@@ -93,25 +92,14 @@ pub fn initialize_stake_account<'info>(
     stake_info: &Account<'info, StakeInfo>,
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
-    native_vault: &SystemAccount<'info>,
+    native_vault: &UncheckedAccount<'info>,
     stake_info_bump: u8,
     stake_amount: u64,
 ) -> Result<()> {
     let sys_stake_state_key = sys_stake_state.key();
-    
-    // check sol balance
-    let min_balance = rent.minimum_balance(sys_stake_state.data_len());
-    let expected_balance = min_balance + stake_amount;
-    if expected_balance < sys_stake_state.lamports() {
-        return Err(Error::from(NeedMoreStakeToken));
-    }
-    let need_to_transfer = expected_balance - sys_stake_state.lamports();
-    if need_to_transfer > 0 {
-        instructions::transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), need_to_transfer)?;
-    }
+
     instructions::try_rebalance(sys_stake_state, rent, native_vault, stake_amount)?;
-    
-    
+
     let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
     let authorized = &Authorized {
         staker: stake_info.key(),

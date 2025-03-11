@@ -14,6 +14,10 @@ declare_id!("StakePPyu7cgbWngmEhW5Gr86D9x1HZoseKy2JFTNbP");
 #[program]
 pub mod stake_proxy {
     use super::*;
+    
+    pub fn initialize<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, Initialize<'info>>) -> Result<()> {
+        initialize::handler(ctx)
+    }
 
     pub fn initialize_account<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, InitializeAccount<'info>>, args: InitializeAccountArgs) -> Result<()> {
         initialize_account::handler(ctx, args)
