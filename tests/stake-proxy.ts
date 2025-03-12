@@ -1,18 +1,21 @@
 import * as anchor from "@coral-xyz/anchor";
 import {Program, web3} from "@coral-xyz/anchor";
 import {StakeProxy} from "../target/types/stake_proxy";
-import {SystemProgram} from "@solana/web3.js" ;
+import {PublicKey, SystemProgram} from "@solana/web3.js" ;
 import {
+    createInitializeMint2Instruction, createMintToInstruction,
     createSyncNativeInstruction,
     getAssociatedTokenAddress, getAssociatedTokenAddressSync,
-    getOrCreateAssociatedTokenAccount,
+    getOrCreateAssociatedTokenAccount, createMint,
     NATIVE_MINT
 } from "@solana/spl-token";
 import BN from "bn.js";
+import {createAssociatedTokenAccountInstruction} from "@solana/spl-token/src/instructions/associatedTokenAccount";
 
 describe("stake-proxy", () => {
     // Configure the client to use the local cluster.
     anchor.setProvider(anchor.AnchorProvider.env());
+    const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
 
     const program = anchor.workspace.StakeProxy as Program<StakeProxy>;
 
@@ -29,31 +32,28 @@ describe("stake-proxy", () => {
 
         const s1 = await anchor.getProvider().connection.requestAirdrop(nativeVault, 1000000 * anchor.web3.LAMPORTS_PER_SOL);
         await anchor.getProvider().connection.confirmTransaction(s1);
+        console.log("init")
         const {ata} = await requestWsol(payer)
+        console.log("init2")
         return {nativeVault, ata}
     }
 
     async function requestWsol(payer: anchor.web3.Keypair) {
+        const mint = anchor.web3.Keypair.fromSecretKey(new Uint8Array([213,50,144,69,65,59,187,93,206,199,77,226,167,39,149,36,254,45,245,78,48,69,138,238,83,154,149,142,144,116,208,229,28,140,211,193,128,241,114,45,179,80,71,32,158,243,51,166,90,93,254,59,46,156,238,126,126,142,21,9,97,38,161,26]))
+
+        await createMint(anchor.getProvider().connection, payer, payer.publicKey, payer.publicKey,  9, mint)
 
         // remember to create ATA first
         let ata = await getOrCreateAssociatedTokenAccount(
             anchor.getProvider().connection,
             payer,
-            NATIVE_MINT, // mint
+            mint.publicKey, // mint
             payer.publicKey, // owner
         );
-
-        let amount = 100 * 1e9; /* Wrapped SOL's decimals is 9 */
+        
 
         let tx = new anchor.web3.Transaction().add(
-            // transfer SOL
-            SystemProgram.transfer({
-                fromPubkey: payer.publicKey,
-                toPubkey: ata.address,
-                lamports: amount,
-            }),
-            // sync wrapped SOL balance
-            createSyncNativeInstruction(ata.address),
+            createMintToInstruction(mint.publicKey, ata.address, payer.publicKey, 100000000 * anchor.web3.LAMPORTS_PER_SOL, [payer])
         );
         console.log(
             `txhash: ${await anchor.getProvider().sendAndConfirm(tx, [payer])}`,
@@ -68,15 +68,15 @@ describe("stake-proxy", () => {
         const sys_stake_state = anchor.web3.Keypair.generate()
         const [stakeInfo, stakeInfoBump]  = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("stake_info"), sys_stake_state.publicKey.toBuffer()], program.programId)
 
-        const WSOL = new anchor.web3.PublicKey("So11111111111111111111111111111111111111112")
+        const WSOL = new anchor.web3.PublicKey("2vSxuEFrcRCrj95jGnQ5kfSPMN2JyqXhfA22iaiivR7f")
         const tokenVault = getAssociatedTokenAddressSync(WSOL, nativeVault, true);
 
         const createAccountInstruction = SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
             newAccountPubkey: sys_stake_state.publicKey,
             lamports: anchor.web3.LAMPORTS_PER_SOL,
-            space: 0,
-            programId: program.programId
+            space: 200,
+            programId: new PublicKey("Stake11111111111111111111111111111111111111")
         });
 
         const initializeAccountInstruction = await program.methods.initializeAccount({

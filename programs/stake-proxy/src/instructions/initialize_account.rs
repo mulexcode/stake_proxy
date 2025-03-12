@@ -2,13 +2,23 @@ use anchor_lang::prelude::*;
 use anchor_lang::{solana_program, system_program};
 use anchor_lang::solana_program::stake::state::{Authorized, Lockup, StakeStateV2};
 use anchor_lang::solana_program::stake;
+use anchor_lang::solana_program::stake::program::ID;
 use crate::stake_info::StakeInfo;
 use crate::state::*;
 use crate::constants::{NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT};
 
-use anchor_spl::{associated_token, associated_token::AssociatedToken, token, token::{Mint, Token, TokenAccount}};
+use anchor_spl::{associated_token, associated_token::AssociatedToken, token,  token::{Mint, Token, TokenAccount}};
 use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken, StakeTokenMintMismatch};
 use crate::instructions;
+
+#[derive(Clone)]
+pub struct Stake;
+
+impl anchor_lang::Id for Stake {
+    fn id() -> Pubkey {
+        pubkey!("Stake11111111111111111111111111111111111111")
+    }
+}
 
 #[derive(Accounts)]
 pub struct InitializeAccount<'info> {
@@ -42,7 +52,7 @@ pub struct InitializeAccount<'info> {
         associated_token::authority = native_vault,
     )]
     pub token_vault: Account<'info, TokenAccount>,
-    
+
     /// CHECK: check its ownership
     #[account(
         mut,
@@ -57,6 +67,7 @@ pub struct InitializeAccount<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
+    pub stake: Program<'info, Stake>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -79,7 +90,16 @@ pub fn handler(ctx: Context<InitializeAccount>, args: InitializeAccountArgs) -> 
         args.amount,
     )?;
 
-    initialize_stake_account(&ctx.accounts.stake_info, &ctx.accounts.sys_stake_state, &ctx.accounts.rent, &ctx.accounts.native_vault, ctx.bumps.stake_info, args.amount)?;
+    initialize_stake_account(
+        &ctx.accounts.stake_info,
+        &ctx.accounts.sys_stake_state,
+        &ctx.accounts.rent, 
+        &ctx.accounts.native_vault, 
+        &ctx.accounts.system_program, 
+        ctx.bumps.stake_info, 
+        ctx.bumps.native_vault,
+        args.amount
+    )?;
 
     ctx.accounts.stake_info.amount = args.amount;
     ctx.accounts.stake_info.staker_pubkey = args.staker;
@@ -93,25 +113,30 @@ pub fn initialize_stake_account<'info>(
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
     native_vault: &UncheckedAccount<'info>,
+    system: &Program<'info, System>,
     stake_info_bump: u8,
+    native_vault_bump: u8,
     stake_amount: u64,
 ) -> Result<()> {
     let sys_stake_state_key = sys_stake_state.key();
-
-    instructions::try_rebalance(sys_stake_state, rent, native_vault, stake_amount)?;
-
+    
     let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
+    let native_vault_seeds: &[&[&[u8]]] = &[&[NATIVE_VAULT_SEED.as_bytes(), &[native_vault_bump]]];
+
+    instructions::try_rebalance(sys_stake_state, rent, native_vault, system, native_vault_seeds, stake_amount);
+    
     let authorized = &Authorized {
         staker: stake_info.key(),
         withdrawer: stake_info.key(),
     };
     let ix = stake::instruction::initialize(&sys_stake_state_key, authorized, &Lockup::default());
-    solana_program::program::invoke_signed(
+    let res: Result<()> = solana_program::program::invoke_signed(
         &ix,
         &[
             sys_stake_state.to_account_info(),
             rent.to_account_info(),
         ],
         stake_info_seeds,
-    ).map_err(Into::into)
+    ).map_err(Into::into);
+    res
 }

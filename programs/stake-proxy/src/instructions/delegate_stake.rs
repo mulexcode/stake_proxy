@@ -97,8 +97,10 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
         &ctx.accounts.vote,
         &ctx.accounts.clock,
         &ctx.accounts.stake_history,
-        &ctx.accounts.native_vault, 
+        &ctx.accounts.native_vault,
+        &ctx.accounts.system_program,
         ctx.bumps.stake_info,
+        ctx.bumps.native_vault,
         args.amount)
 }
 
@@ -110,13 +112,16 @@ fn delegate_stake<'info>(
     clock: &Sysvar<'info, Clock>,
     stake_history: &Sysvar<'info, StakeHistory>,
     native_vault: &UncheckedAccount<'info>,
+    system: &Program<'info, System>,
     stake_info_bump: u8,
+    native_bump: u8,
     stake_amount: u64,
 ) -> Result<()> {
     let sys_stake_state_key = sys_stake_state.key();
     let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
+    let native_vault_seeds: &[&[&[u8]]] = &[&[NATIVE_VAULT_SEED.as_bytes(), &[native_bump]]];
     
-    rebalance(stake_info, sys_stake_state, rent, native_vault,  clock, stake_history, stake_info_seeds, stake_amount)?;
+    rebalance(stake_info, sys_stake_state, rent, native_vault,  clock, stake_history, system, stake_info_seeds, native_vault_seeds, stake_amount)?;
     
     let ix = stake::instruction::delegate_stake(&sys_stake_state.key(), &stake_info.key(), &vote.key());
     solana_program::program::invoke_signed(

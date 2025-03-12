@@ -1,11 +1,14 @@
 pub mod initialize_account;
 pub mod delegate_stake;
 pub mod initialize;
+mod withdraw;
 
-use anchor_lang::prelude::{Account, AccountInfo, Clock, Rent, StakeHistory, SystemAccount, Sysvar, UncheckedAccount};
+use anchor_lang::prelude::{Account, AccountInfo, Clock, Program, Rent, StakeHistory, SystemAccount, Sysvar, UncheckedAccount};
 use anchor_lang::error::Error;
 use anchor_lang::solana_program::stake;
-use anchor_lang::{solana_program, Key, ToAccountInfo};
+use anchor_lang::{solana_program, system_program, Key, ToAccountInfo};
+use anchor_lang::context::CpiContext;
+use anchor_lang::system_program::System;
 pub use initialize_account::*;
 pub use delegate_stake::*;
 pub use initialize::*;
@@ -13,17 +16,24 @@ use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToke
 use crate::instructions;
 use crate::stake_info::StakeInfo;
 
-fn transfer_lamports(
-    from_account: &AccountInfo,
-    to_account: &AccountInfo,
+fn transfer_lamports<'info>(
+    from_account: &AccountInfo<'info>,
+    to_account: &AccountInfo<'info>,
+    system: &AccountInfo<'info>,
+    signer_seed:  &[&[&[u8]]],
     amount_of_lamports: u64,
 ) -> anchor_lang::Result<()> {
-    if **from_account.try_borrow_lamports()? < amount_of_lamports {
-        return Err(Error::from(InsufficientFundsForTransaction));
-    }
-    // Debit from_account and credit to_account
-    **from_account.try_borrow_mut_lamports()? -= amount_of_lamports;
-    **to_account.try_borrow_mut_lamports()? += amount_of_lamports;
+    // transfer fee to recipient
+    system_program::transfer(
+        CpiContext::new(
+            system.to_account_info(),
+            system_program::Transfer {
+                from: from_account.to_account_info(),
+                to: to_account.to_account_info(),
+            },
+        ).with_signer(signer_seed),
+        amount_of_lamports,
+    )?;
     Ok(())
 }
 
@@ -34,7 +44,9 @@ fn rebalance<'info>(
     native_vault: &UncheckedAccount<'info>,
     clock: &Sysvar<'info, Clock>,
     stake_history: &Sysvar<'info, StakeHistory>,
+    system: &Program<'info, System>,
     stake_info_seeds: &[&[&[u8]]],
+    native_vault_seeds: &[&[&[u8]]],
     stake_amount: u64
 ) -> anchor_lang::Result<()> {
     // check sol balance
@@ -47,7 +59,7 @@ fn rebalance<'info>(
 
     let need_to_stake = expected_balance - sys_stake_state.lamports();
     if need_to_stake > 0 {
-        transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), need_to_stake)?;
+        transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), &system.to_account_info(), native_vault_seeds, need_to_stake)?;
     }
     Ok(())
 }
@@ -56,6 +68,8 @@ fn try_rebalance<'info>(
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
     native_vault: &UncheckedAccount<'info>,
+    system: &Program<'info, System>,
+    native_vault_seeds: &[&[&[u8]]],
     stake_amount: u64
 ) -> anchor_lang::Result<()> {
     // check sol balance
@@ -67,7 +81,7 @@ fn try_rebalance<'info>(
 
     let need_to_stake = expected_balance - sys_stake_state.lamports();
     if need_to_stake > 0 {
-        transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), need_to_stake)?;
+        transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), &system.to_account_info(), native_vault_seeds, need_to_stake)?;
     }
     Ok(())
 }

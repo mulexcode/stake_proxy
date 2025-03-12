@@ -19,4 +19,4 @@ localnet = []
 
 [dependencies]
 anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
-anchor-spl = "0.30.1"
+anchor-spl = { version = "0.30.1"}
