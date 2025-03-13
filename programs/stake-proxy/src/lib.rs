@@ -26,4 +26,12 @@ pub mod stake_proxy {
     pub fn delegate_stake<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, DelegateStakeAccount>, args: DelegateStakeArgs) -> Result<()> {
         delegate_stake::handler(ctx, args)
     }
+
+    pub fn withdraw<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, WithdrawAccount>, args: WithdrawArgs) -> Result<()> {
+        withdraw::handler(ctx, args)
+    }
+    
+    pub fn deactivate<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'info, DeactivateAccount>) -> Result<()> {
+        deactivate::handler(ctx)
+    }
 }

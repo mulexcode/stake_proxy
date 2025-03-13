@@ -7,18 +7,10 @@ use crate::stake_info::StakeInfo;
 use crate::state::*;
 use crate::constants::{NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT};
 
-use anchor_spl::{associated_token, associated_token::AssociatedToken, token,  token::{Mint, Token, TokenAccount}};
+use anchor_spl::{associated_token, associated_token::AssociatedToken, token, token::{Mint, Token, TokenAccount}};
 use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken, StakeTokenMintMismatch};
 use crate::instructions;
-
-#[derive(Clone)]
-pub struct Stake;
-
-impl anchor_lang::Id for Stake {
-    fn id() -> Pubkey {
-        pubkey!("Stake11111111111111111111111111111111111111")
-    }
-}
+use crate::instructions::Stake;
 
 #[derive(Accounts)]
 pub struct InitializeAccount<'info> {
@@ -123,7 +115,7 @@ pub fn initialize_stake_account<'info>(
     let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
     let native_vault_seeds: &[&[&[u8]]] = &[&[NATIVE_VAULT_SEED.as_bytes(), &[native_vault_bump]]];
 
-    instructions::try_rebalance(sys_stake_state, rent, native_vault, system, native_vault_seeds, stake_amount);
+    instructions::try_rebalance(sys_stake_state, rent, native_vault, system, native_vault_seeds, stake_amount)?;
     
     let authorized = &Authorized {
         staker: stake_info.key(),

@@ -1,19 +1,23 @@
 pub mod initialize_account;
 pub mod delegate_stake;
 pub mod initialize;
-mod withdraw;
+pub mod withdraw;
+pub mod deactivate;
 
-use anchor_lang::prelude::{Account, AccountInfo, Clock, Program, Rent, StakeHistory, SystemAccount, Sysvar, UncheckedAccount};
+use anchor_lang::prelude::{msg, Account, AccountInfo, Clock, Program, Pubkey, Rent, StakeHistory, SystemAccount, Sysvar, UncheckedAccount};
 use anchor_lang::error::Error;
 use anchor_lang::solana_program::stake;
-use anchor_lang::{solana_program, system_program, Key, ToAccountInfo};
+use anchor_lang::{pubkey, solana_program, system_program, Key, ToAccountInfo};
 use anchor_lang::context::CpiContext;
 use anchor_lang::system_program::System;
+
 pub use initialize_account::*;
 pub use delegate_stake::*;
 pub use initialize::*;
-use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken};
-use crate::instructions;
+pub use withdraw::*;
+pub use deactivate::*;
+
+use crate::error::ErrorCode::NeedMoreStakeToken;
 use crate::stake_info::StakeInfo;
 
 fn transfer_lamports<'info>(
@@ -78,7 +82,6 @@ fn try_rebalance<'info>(
     if expected_balance < sys_stake_state.lamports() {
         return Err(Error::from(NeedMoreStakeToken));
     }
-
     let need_to_stake = expected_balance - sys_stake_state.lamports();
     if need_to_stake > 0 {
         transfer_lamports(&native_vault.to_account_info(), &sys_stake_state.to_account_info(), &system.to_account_info(), native_vault_seeds, need_to_stake)?;
@@ -105,4 +108,13 @@ fn sys_stake_withdraw<'info>(stake_info: &Account<'info, StakeInfo>,
         ],
         stake_info_seeds,
     ).map_err(Into::into)
+}
+
+#[derive(Clone)]
+pub struct Stake;
+
+impl anchor_lang::Id for Stake {
+    fn id() -> Pubkey {
+        pubkey!("Stake11111111111111111111111111111111111111")
+    }
 }

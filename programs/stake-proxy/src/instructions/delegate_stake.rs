@@ -8,7 +8,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::error::ErrorCode::{StakeAmountTooSmall, StakeTokenMintMismatch};
 use crate::instructions::rebalance;
 use crate::stake_info::StakeInfo;
-use crate::{STAKE_INFO_SEED,NATIVE_VAULT_SEED, STAKE_TOKEN_MINT};
+use crate::{STAKE_INFO_SEED, NATIVE_VAULT_SEED, STAKE_TOKEN_MINT, STAKE_CONFIG, Stake};
 
 #[derive(Accounts)]
 pub struct DelegateStakeAccount<'info>  {
@@ -42,7 +42,7 @@ pub struct DelegateStakeAccount<'info>  {
     pub native_vault: UncheckedAccount<'info>, // init in genesis block
 
     #[account(mut,
-        address = stake_info.withdrawer_pubkey,
+        address = stake_info.staker_pubkey,
     )]
     pub authority: Signer<'info>,
     #[account(mut,
@@ -62,6 +62,10 @@ pub struct DelegateStakeAccount<'info>  {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
+    /// CHECK: no check
+    #[account(address = STAKE_CONFIG @ StakeTokenMintMismatch)]
+    pub stake_config: UncheckedAccount<'info>,
+    pub stake: Program<'info, Stake>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -74,7 +78,7 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
         return Err(StakeAmountTooSmall.into());
     }
     
-    let transfer_amount = ctx.accounts.stake_info.amount - args.amount;
+    let transfer_amount =  args.amount - ctx.accounts.stake_info.amount;
     if transfer_amount > 0 {
         token::transfer(
             CpiContext::new(
@@ -85,7 +89,7 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
                     authority: ctx.accounts.authority.to_account_info(),
                 },
             ),
-            args.amount,
+            transfer_amount,
         )?;
     }
     
@@ -99,9 +103,12 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
         &ctx.accounts.stake_history,
         &ctx.accounts.native_vault,
         &ctx.accounts.system_program,
+        &ctx.accounts.stake_config,
         ctx.bumps.stake_info,
         ctx.bumps.native_vault,
-        args.amount)
+        args.amount)?;
+    ctx.accounts.stake_info.amount = args.amount;
+    Ok(())
 }
 
 fn delegate_stake<'info>(
@@ -113,6 +120,7 @@ fn delegate_stake<'info>(
     stake_history: &Sysvar<'info, StakeHistory>,
     native_vault: &UncheckedAccount<'info>,
     system: &Program<'info, System>,
+    stake_config: &UncheckedAccount<'info>,
     stake_info_bump: u8,
     native_bump: u8,
     stake_amount: u64,
@@ -131,6 +139,7 @@ fn delegate_stake<'info>(
             vote.to_account_info(),
             clock.to_account_info(),
             stake_history.to_account_info(),
+            stake_config.to_account_info(),
             stake_info.to_account_info(),
         ],
         stake_info_seeds,

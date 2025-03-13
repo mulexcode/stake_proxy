@@ -15,4 +15,7 @@ pub const STAKE_INFO_SEED: &str = "stake_info";
 #[constant]
 pub const NATIVE_VAULT_SEED: &str = "native_vault";
 
+#[constant]
+pub const STAKE_CONFIG: Pubkey = pubkey!("StakeConfig11111111111111111111111111111111");
+
 
