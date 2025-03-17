@@ -24,6 +24,7 @@ describe("stake-proxy", () => {
     const stakeMint = stakeMintKeyPair.publicKey;
     const tokenVault = getAssociatedTokenAddressSync(stakeMint, nativeVault, true);
     const voter = anchor.web3.Keypair.generate();
+    const [delegateAuth, ] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("delegate_authority")], program.programId)
 
     async function requestAirdrop(to: anchor.web3.PublicKey,  amount: number) {
         const ix = SystemProgram.transfer({
@@ -107,13 +108,14 @@ describe("stake-proxy", () => {
             tokenMint: stakeMint,
             tokenPayer: ata.address,
             payer: newStaker.publicKey,
+            delegateAuthority:delegateAuth,
         }).instruction()
         let tx = new anchor.web3.Transaction().add(
             createAccountInstruction,
             initializeAccountInstruction
         );
         console.log(
-            `txhash: ${await anchor.getProvider().sendAndConfirm(tx, [newStaker, sys_stake_state])}`,
+            `initializeAccount txhash: ${await anchor.getProvider().sendAndConfirm(tx, [newStaker, sys_stake_state])}`,
         );
         const stakeInfoData = await program.account.stakeInfo.fetch(stakeInfo);
         const tokenVaultBalance = (await getAccount(anchor.getProvider().connection, tokenVault)).amount
@@ -133,7 +135,9 @@ describe("stake-proxy", () => {
             tokenPayer: ata.address,
             tokenVault: tokenVault,
             vote: voter.publicKey,
-            stakeConfig: new anchor.web3.PublicKey("StakeConfig11111111111111111111111111111111")
+            payer:newStaker.publicKey,
+            stakeConfig: new anchor.web3.PublicKey("StakeConfig11111111111111111111111111111111"),
+            delegateAuthority:delegateAuth,
         }).signers([newStaker]).rpc()
 
         const stakeInfoDataAfterDelegate = await program.account.stakeInfo.fetch(stakeInfo);
@@ -152,6 +156,8 @@ describe("stake-proxy", () => {
                 tokenVault: tokenVault,
                 nativeVault: nativeVault,
                 tokenReceiver: ata.address,
+                payer: newStaker.publicKey,
+                delegateAuthority:delegateAuth,
             }).signers([newStaker]).rpc()
         } catch (e) {
             console.log(e)
@@ -171,6 +177,8 @@ describe("stake-proxy", () => {
             tokenVault: tokenVault,
             nativeVault: nativeVault,
             tokenReceiver: ata.address,
+            payer:newStaker.publicKey,
+            delegateAuthority:delegateAuth,
         }).signers([newStaker]).rpc()
 
         const stakeInfoDataAfterWithdraw = await program.account.stakeInfo.fetch(stakeInfo);

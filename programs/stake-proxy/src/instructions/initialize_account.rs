@@ -2,10 +2,12 @@ use anchor_lang::prelude::*;
 use anchor_lang::{solana_program, system_program};
 use anchor_lang::solana_program::stake::state::{Authorized, Lockup, StakeStateV2};
 use anchor_lang::solana_program::stake;
+use anchor_lang::solana_program::stake::instruction::StakeInstruction;
 use anchor_lang::solana_program::stake::program::ID;
+use anchor_lang::solana_program::system_instruction::SystemInstruction::Transfer;
 use crate::stake_info::StakeInfo;
 use crate::state::*;
-use crate::constants::{NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT};
+use crate::constants::{NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT, DELEGATE_AUTHORITY_SEED};
 
 use anchor_spl::{associated_token, associated_token::AssociatedToken, token, token::{Mint, Token, TokenAccount}};
 use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken, StakeTokenMintMismatch};
@@ -32,6 +34,11 @@ pub struct InitializeAccount<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
+    
+    /// CHECK: check its ownership
+    #[account(seeds = [DELEGATE_AUTHORITY_SEED.as_bytes()], bump)]
+    pub delegate_authority: UncheckedAccount<'info>,
+    
     #[account(mut,
         token::mint = token_mint,
         token::authority = payer,
@@ -83,12 +90,12 @@ pub fn handler(ctx: Context<InitializeAccount>, args: InitializeAccountArgs) -> 
     )?;
 
     initialize_stake_account(
-        &ctx.accounts.stake_info,
+        &ctx.accounts.delegate_authority,
         &ctx.accounts.sys_stake_state,
         &ctx.accounts.rent, 
         &ctx.accounts.native_vault, 
         &ctx.accounts.system_program, 
-        ctx.bumps.stake_info, 
+        ctx.bumps.delegate_authority, 
         ctx.bumps.native_vault,
         args.amount
     )?;
@@ -101,34 +108,34 @@ pub fn handler(ctx: Context<InitializeAccount>, args: InitializeAccountArgs) -> 
 }
 
 pub fn initialize_stake_account<'info>(
-    stake_info: &Account<'info, StakeInfo>,
+    delegate_auth: &UncheckedAccount<'info>,
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
     native_vault: &UncheckedAccount<'info>,
     system: &Program<'info, System>,
-    stake_info_bump: u8,
+    delegate_stake_bump: u8,
     native_vault_bump: u8,
     stake_amount: u64,
 ) -> Result<()> {
     let sys_stake_state_key = sys_stake_state.key();
     
-    let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
+    let delegate_auth_seeds: &[&[&[u8]]] = &[&[DELEGATE_AUTHORITY_SEED.as_bytes(), &[delegate_stake_bump]]];
     let native_vault_seeds: &[&[&[u8]]] = &[&[NATIVE_VAULT_SEED.as_bytes(), &[native_vault_bump]]];
 
     instructions::try_rebalance(sys_stake_state, rent, native_vault, system, native_vault_seeds, stake_amount)?;
-    
     let authorized = &Authorized {
-        staker: stake_info.key(),
-        withdrawer: stake_info.key(),
+        staker: delegate_auth.key(),
+        withdrawer: delegate_auth.key(),
     };
     let ix = stake::instruction::initialize(&sys_stake_state_key, authorized, &Lockup::default());
+    
     let res: Result<()> = solana_program::program::invoke_signed(
         &ix,
         &[
             sys_stake_state.to_account_info(),
             rent.to_account_info(),
         ],
-        stake_info_seeds,
+        delegate_auth_seeds,
     ).map_err(Into::into);
     res
 }

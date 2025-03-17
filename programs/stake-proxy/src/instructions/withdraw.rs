@@ -7,7 +7,7 @@ use anchor_spl::token;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::error::ErrorCode::{StakeAmountTooBig, StakeAmountTooSmall, StakeTokenMintMismatch};
 use crate::stake_info::StakeInfo;
-use crate::{STAKE_INFO_SEED, NATIVE_VAULT_SEED, STAKE_TOKEN_MINT, Stake};
+use crate::{STAKE_INFO_SEED, NATIVE_VAULT_SEED, STAKE_TOKEN_MINT, Stake, DELEGATE_AUTHORITY_SEED};
 
 #[derive(Accounts)]
 pub struct WithdrawAccount<'info>  {
@@ -44,6 +44,12 @@ pub struct WithdrawAccount<'info>  {
         address = stake_info.withdrawer_pubkey,
     )]
     pub authority: Signer<'info>,
+    /// CHECK: check its ownership
+    #[account(seeds = [DELEGATE_AUTHORITY_SEED.as_bytes()], bump)]
+    pub delegate_authority: UncheckedAccount<'info>,
+    
+    #[account(mut)]
+    pub payer: Signer<'info>,
     
     #[account(mut,
         token::mint = token_mint,
@@ -74,12 +80,12 @@ pub fn handler(ctx: Context<WithdrawAccount>, args: WithdrawArgs) -> Result<()> 
     }
     
     withdraw(
-        &ctx.accounts.stake_info,
+        &ctx.accounts.delegate_authority,
         &ctx.accounts.sys_stake_state,
         &ctx.accounts.clock,
         &ctx.accounts.stake_history,
         &ctx.accounts.native_vault,
-        ctx.bumps.stake_info,
+        ctx.bumps.delegate_authority,
         args.amount)?;
 
     let native_vault_seeds: &[&[&[u8]]] = &[&[NATIVE_VAULT_SEED.as_bytes(),  &[ctx.bumps.native_vault]]];
@@ -100,18 +106,17 @@ pub fn handler(ctx: Context<WithdrawAccount>, args: WithdrawArgs) -> Result<()> 
 }
 
 fn withdraw<'info>(
-    stake_info: &Account<'info, StakeInfo>,
+    delegate_auth: &UncheckedAccount<'info>,
     sys_stake_state: &UncheckedAccount<'info>,
     clock: &Sysvar<'info, Clock>,
     stake_history: &Sysvar<'info, StakeHistory>,
     native_vault: &UncheckedAccount<'info>,
-    stake_info_bump: u8,
+    delegate_auth_bump: u8,
     lamport: u64,
 ) -> Result<()> {
-    let sys_stake_state_key = sys_stake_state.key();
-    let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
+    let delegate_auth_seeds: &[&[&[u8]]] = &[&[DELEGATE_AUTHORITY_SEED.as_bytes(),  &[delegate_auth_bump]]];
 
-    let ix = stake::instruction::withdraw(&sys_stake_state.key(), &stake_info.key(), &native_vault.key(), lamport, None);
+    let ix = stake::instruction::withdraw(&sys_stake_state.key(), &delegate_auth.key(), &native_vault.key(), lamport, None);
     
     solana_program::program::invoke_signed(
         &ix,
@@ -120,8 +125,8 @@ fn withdraw<'info>(
             native_vault.to_account_info(),
             clock.to_account_info(),
             stake_history.to_account_info(),
-            stake_info.to_account_info(),
+            delegate_auth.to_account_info(),
         ],
-        stake_info_seeds,
+        delegate_auth_seeds,
     ).map_err(Into::into)
 }

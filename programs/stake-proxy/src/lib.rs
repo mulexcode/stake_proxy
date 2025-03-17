@@ -11,6 +11,7 @@ pub use state::*;
 
 declare_id!("StakePPyu7cgbWngmEhW5Gr86D9x1HZoseKy2JFTNbP");
 
+
 #[program]
 pub mod stake_proxy {
     use super::*;

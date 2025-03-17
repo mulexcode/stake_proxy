@@ -8,7 +8,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::error::ErrorCode::{StakeAmountTooSmall, StakeTokenMintMismatch};
 use crate::instructions::rebalance;
 use crate::stake_info::StakeInfo;
-use crate::{STAKE_INFO_SEED, NATIVE_VAULT_SEED, STAKE_TOKEN_MINT, STAKE_CONFIG, Stake};
+use crate::{STAKE_INFO_SEED, NATIVE_VAULT_SEED, STAKE_TOKEN_MINT, STAKE_CONFIG, Stake, DELEGATE_AUTHORITY_SEED};
 
 #[derive(Accounts)]
 pub struct DelegateStakeAccount<'info>  {
@@ -45,9 +45,14 @@ pub struct DelegateStakeAccount<'info>  {
         address = stake_info.staker_pubkey,
     )]
     pub authority: Signer<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: check its ownership
+    #[account(seeds = [DELEGATE_AUTHORITY_SEED.as_bytes()], bump)]
+    pub delegate_authority: UncheckedAccount<'info>,
     #[account(mut,
         token::mint = token_mint,
-        token::authority = authority,
+        token::authority = payer,
     )]
     pub token_payer: Account<'info, TokenAccount>,
 
@@ -95,7 +100,7 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
     
     
     delegate_stake(
-        &ctx.accounts.stake_info,
+        &ctx.accounts.delegate_authority,
         &ctx.accounts.sys_stake_state,
         &ctx.accounts.rent,
         &ctx.accounts.vote,
@@ -104,7 +109,7 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
         &ctx.accounts.native_vault,
         &ctx.accounts.system_program,
         &ctx.accounts.stake_config,
-        ctx.bumps.stake_info,
+        ctx.bumps.delegate_authority,
         ctx.bumps.native_vault,
         args.amount)?;
     ctx.accounts.stake_info.amount = args.amount;
@@ -112,7 +117,7 @@ pub fn handler(ctx: Context<DelegateStakeAccount>, args: DelegateStakeArgs) -> R
 }
 
 fn delegate_stake<'info>(
-    stake_info: &Account<'info, StakeInfo>,
+    delegate_auth: &UncheckedAccount<'info>,
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
     vote: &UncheckedAccount<'info>,
@@ -121,17 +126,16 @@ fn delegate_stake<'info>(
     native_vault: &UncheckedAccount<'info>,
     system: &Program<'info, System>,
     stake_config: &UncheckedAccount<'info>,
-    stake_info_bump: u8,
+    delegate_auth_bump: u8,
     native_bump: u8,
     stake_amount: u64,
 ) -> Result<()> {
-    let sys_stake_state_key = sys_stake_state.key();
-    let stake_info_seeds: &[&[&[u8]]] = &[&[STAKE_INFO_SEED.as_bytes(), sys_stake_state_key.as_ref(), &[stake_info_bump]]];
+    let delegate_auth_seeds: &[&[&[u8]]] = &[&[DELEGATE_AUTHORITY_SEED.as_bytes(), &[delegate_auth_bump]]];
     let native_vault_seeds: &[&[&[u8]]] = &[&[NATIVE_VAULT_SEED.as_bytes(), &[native_bump]]];
     
-    rebalance(stake_info, sys_stake_state, rent, native_vault,  clock, stake_history, system, stake_info_seeds, native_vault_seeds, stake_amount)?;
+    rebalance(delegate_auth, sys_stake_state, rent, native_vault,  clock, stake_history, system, delegate_auth_seeds, native_vault_seeds, stake_amount)?;
     
-    let ix = stake::instruction::delegate_stake(&sys_stake_state.key(), &stake_info.key(), &vote.key());
+    let ix = stake::instruction::delegate_stake(&sys_stake_state.key(), &delegate_auth.key(), &vote.key());
     solana_program::program::invoke_signed(
         &ix,
         &[
@@ -140,8 +144,8 @@ fn delegate_stake<'info>(
             clock.to_account_info(),
             stake_history.to_account_info(),
             stake_config.to_account_info(),
-            stake_info.to_account_info(),
+            delegate_auth.to_account_info(),
         ],
-        stake_info_seeds,
+        delegate_auth_seeds,
     ).map_err(Into::into)
 }

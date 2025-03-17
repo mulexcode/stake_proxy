@@ -42,14 +42,14 @@ fn transfer_lamports<'info>(
 }
 
 fn rebalance<'info>(
-    stake_info: &Account<'info, StakeInfo>,
+    delegate_auth: &UncheckedAccount<'info>,
     sys_stake_state: &UncheckedAccount<'info>,
     rent: &Sysvar<'info, Rent>,
     native_vault: &UncheckedAccount<'info>,
     clock: &Sysvar<'info, Clock>,
     stake_history: &Sysvar<'info, StakeHistory>,
     system: &Program<'info, System>,
-    stake_info_seeds: &[&[&[u8]]],
+    delegate_auth_seeds: &[&[&[u8]]],
     native_vault_seeds: &[&[&[u8]]],
     stake_amount: u64
 ) -> anchor_lang::Result<()> {
@@ -58,7 +58,7 @@ fn rebalance<'info>(
     let expected_balance = min_balance + stake_amount;
     if expected_balance < sys_stake_state.lamports() {
         let need_to_withdraw = expected_balance - sys_stake_state.lamports();
-        sys_stake_withdraw(stake_info, sys_stake_state, clock, stake_history, native_vault, stake_info_seeds, need_to_withdraw)?
+        sys_stake_withdraw(delegate_auth, sys_stake_state, clock, stake_history, native_vault, delegate_auth_seeds, need_to_withdraw)?
     }
 
     let need_to_stake = expected_balance - sys_stake_state.lamports();
@@ -89,14 +89,14 @@ fn try_rebalance<'info>(
     Ok(())
 }
 
-fn sys_stake_withdraw<'info>(stake_info: &Account<'info, StakeInfo>,
+fn sys_stake_withdraw<'info>(delegate_auth: &UncheckedAccount<'info>,
                              sys_stake_state: &UncheckedAccount<'info>,
                              clock: &Sysvar<'info, Clock>,
                              stake_history: &Sysvar<'info, StakeHistory>,
                              native_vault: &UncheckedAccount<'info>,
-                             stake_info_seeds: &[&[&[u8]]],
+                             delegate_auth_seeds: &[&[&[u8]]],
                              withdraw_amount: u64) -> anchor_lang::Result<()> {
-    let ix = stake::instruction::withdraw(&sys_stake_state.key(), &stake_info.key(), &native_vault.key(), withdraw_amount, None);
+    let ix = stake::instruction::withdraw(&sys_stake_state.key(), &delegate_auth.key(), &native_vault.key(), withdraw_amount, None);
     solana_program::program::invoke_signed(
         &ix,
         &[
@@ -104,9 +104,9 @@ fn sys_stake_withdraw<'info>(stake_info: &Account<'info, StakeInfo>,
             native_vault.to_account_info(),
             clock.to_account_info(),
             stake_history.to_account_info(),
-            stake_info.to_account_info(),
+            delegate_auth.to_account_info(),
         ],
-        stake_info_seeds,
+        delegate_auth_seeds,
     ).map_err(Into::into)
 }
 
