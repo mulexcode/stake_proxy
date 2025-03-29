@@ -2,15 +2,9 @@ import * as anchor from "@coral-xyz/anchor";
 import {Program, web3} from "@coral-xyz/anchor";
 import {StakeProxy} from "../target/types/stake_proxy";
 import {PublicKey, SystemProgram, VoteInit, VoteProgram} from "@solana/web3.js" ;
-import {
-    createInitializeMint2Instruction, createMintToInstruction,
-    createSyncNativeInstruction,
-    getAssociatedTokenAddress, getAssociatedTokenAddressSync,
-    getOrCreateAssociatedTokenAccount, createMint,
-    NATIVE_MINT, getAccount, getMinimumBalanceForRentExemptAccount
-} from "@solana/spl-token";
+import {createMintToInstruction, getAssociatedTokenAddressSync,
+    getOrCreateAssociatedTokenAccount, createMint, getAccount} from "@solana/spl-token";
 import BN from "bn.js";
-import {createAssociatedTokenAccountInstruction} from "@solana/spl-token/src/instructions/associatedTokenAccount";
 import {expect} from "chai";
 
 describe("stake-proxy", () => {

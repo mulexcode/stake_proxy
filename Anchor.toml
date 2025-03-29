@@ -6,14 +6,18 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+solana-bridge = "HFkN6HWCb94UNExgdv7sQ9XydRsQGpRoMvFZPW4BmcqW"
 stake_proxy = "StakePPyu7cgbWngmEhW5Gr86D9x1HZoseKy2JFTNbP"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "https://test-mixscan.island3.io/rpc"
+#cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+init = "ts-node -P ./tsconfig.json scripts/init.ts"
+cash_out = "ts-node -P ./tsconfig.json scripts/cash_out.ts"

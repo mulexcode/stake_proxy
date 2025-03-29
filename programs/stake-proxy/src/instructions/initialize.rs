@@ -36,8 +36,3 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
         &ctx.accounts.system_program.key(),
     )
 }
-
-#[cfg(test)]
-mod test {
-    
-}

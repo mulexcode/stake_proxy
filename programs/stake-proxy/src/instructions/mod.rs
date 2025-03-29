@@ -4,7 +4,7 @@ pub mod initialize;
 pub mod withdraw;
 pub mod deactivate;
 
-use anchor_lang::prelude::{msg, Account, AccountInfo, Clock, Program, Pubkey, Rent, StakeHistory, SystemAccount, Sysvar, UncheckedAccount};
+use anchor_lang::prelude::{ AccountInfo, Clock, Program, Pubkey, Rent, StakeHistory, Sysvar, UncheckedAccount};
 use anchor_lang::error::Error;
 use anchor_lang::solana_program::stake;
 use anchor_lang::{pubkey, solana_program, system_program, Key, ToAccountInfo};
@@ -18,7 +18,6 @@ pub use withdraw::*;
 pub use deactivate::*;
 
 use crate::error::ErrorCode::NeedMoreStakeToken;
-use crate::stake_info::StakeInfo;
 
 fn transfer_lamports<'info>(
     from_account: &AccountInfo<'info>,

@@ -2,15 +2,11 @@ use anchor_lang::prelude::*;
 use anchor_lang::{solana_program, system_program};
 use anchor_lang::solana_program::stake::state::{Authorized, Lockup, StakeStateV2};
 use anchor_lang::solana_program::stake;
-use anchor_lang::solana_program::stake::instruction::StakeInstruction;
-use anchor_lang::solana_program::stake::program::ID;
-use anchor_lang::solana_program::system_instruction::SystemInstruction::Transfer;
 use crate::stake_info::StakeInfo;
-use crate::state::*;
 use crate::constants::{NATIVE_VAULT_SEED, STAKE_INFO_SEED, STAKE_STATE_SEED, STAKE_TOKEN_MINT, DELEGATE_AUTHORITY_SEED};
 
-use anchor_spl::{associated_token, associated_token::AssociatedToken, token, token::{Mint, Token, TokenAccount}};
-use crate::error::ErrorCode::{InsufficientFundsForTransaction, NeedMoreStakeToken, StakeTokenMintMismatch};
+use anchor_spl::{associated_token::AssociatedToken, token, token::{Mint, Token, TokenAccount}};
+use crate::error::ErrorCode::{NeedMoreStakeToken, StakeTokenMintMismatch};
 use crate::instructions;
 use crate::instructions::Stake;
 
