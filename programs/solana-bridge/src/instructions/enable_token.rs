@@ -30,7 +30,6 @@ pub struct EnableTokenAccount<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 pub fn handler(ctx: Context<EnableTokenAccount>, token_name: String) -> Result<()> {

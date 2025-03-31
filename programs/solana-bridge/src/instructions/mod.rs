@@ -7,6 +7,7 @@ pub mod cash_out;
 pub mod cash_out_sol;
 pub mod payout;
 pub mod payout_sol;
+pub mod update_manager;
 
 pub use initialize::*;
 pub use enable_token::*;
@@ -15,3 +16,4 @@ pub use cash_out::*;
 pub use cash_out_sol::*;
 pub use payout::*;
 pub use payout_sol::*;
+pub use update_manager::*;

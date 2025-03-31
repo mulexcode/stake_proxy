@@ -18,4 +18,9 @@ impl SystemConfig {
         self.manager = manager;
         self.chain_id = chain_id;
     }
+
+    pub fn update_manager(&mut self, manager: Pubkey, secp256k1_manager: [u8; 20]) {
+        self.secp256k1_manager = secp256k1_manager;
+        self.manager = manager;
+    }
 }

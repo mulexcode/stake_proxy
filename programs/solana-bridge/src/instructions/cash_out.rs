@@ -53,8 +53,6 @@ pub struct CashOutAccount<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]

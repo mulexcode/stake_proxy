@@ -60,7 +60,6 @@ pub struct PayoutAccount<'info> {
     )]
     pub token_receiver: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
     /// CHECK: check its id
     #[account(address = sysvar::instructions::id())]
     pub instruction_sysvar: AccountInfo<'info>,

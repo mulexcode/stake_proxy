@@ -28,7 +28,6 @@ pub struct InitializeAccount<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 pub fn handler(ctx: Context<InitializeAccount>, chain_id: u64, manager: Pubkey, secp256k1_manager: [u8; 20]) -> Result<()> {

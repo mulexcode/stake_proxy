@@ -45,6 +45,9 @@ pub mod solana_bridge {
         payout_sol::handler(ctx, args)
     }
 
+    pub fn update_manager(ctx: Context<UpdateManagerAccount>, manager: Pubkey, secp256k1_manager: [u8; 20]) -> Result<()> {
+        update_manager::handler(ctx, manager, secp256k1_manager)
+    }
 }
 
 

@@ -27,7 +27,6 @@ async function deploy() {
     const payer = anchor.Wallet.local().payer;
     const [systemConfig, ]= anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("system_config")], program.programId);
 
-    //const ethAddress = "2f4F09b722a6e5b77bE17c9A99c785Fa7035a09f";
     const ethAddress = "bd18C7721776CE9C9e4dA7C976332D1070dc8ACD";
     const [chainConfig, ] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("chain_config"), new BN(1).toArrayLike(Buffer, 'le', 8)], program.programId);
     const [solChainConfig, ] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("chain_config"), new BN(101).toArrayLike(Buffer, 'le', 8)], program.programId);
@@ -36,24 +35,23 @@ async function deploy() {
     const anotherPayer = anchor.web3.Keypair.generate();
 
 
-    await program.methods.initialize(new BN(8888), payer.publicKey, uint8ToNumberArray(Buffer.from(ethAddress, 'hex'))).accountsPartial({
-        nativeTokenVault: nativeVault,
-        payer: payer.publicKey,
+    await program.methods.updateManager(payer.publicKey, uint8ToNumberArray(Buffer.from(ethAddress, 'hex'))).accountsPartial({
+        manager: payer.publicKey,
     }).signers([payer]).rpc();
     //
-    await program.methods.enableChain(new BN(103)).accountsPartial({
-        payer: payer.publicKey,
-    }).signers([payer]).rpc();
+    // await program.methods.enableChain(new BN(103)).accountsPartial({
+    //     payer: payer.publicKey,
+    // }).signers([payer]).rpc();
 
-    await program.methods.enableToken("mix").accountsPartial({
-        payer: payer.publicKey,
-        tokenMint: "Mix1111111111111111111111111111111111111111",
-    }).signers([payer]).rpc();
+    // await program.methods.enableToken("mix").accountsPartial({
+    //     payer: payer.publicKey,
+    //     tokenMint: "Mix1111111111111111111111111111111111111111",
+    // }).signers([payer]).rpc();
 
-    await program.methods.enableToken("sol").accountsPartial({
-        payer: payer.publicKey,
-        tokenMint: "Mix1111111111111111111111111111111111111111",
-    }).signers([payer]).rpc();
+    // await program.methods.enableToken("sol").accountsPartial({
+    //     payer: payer.publicKey,
+    //     tokenMint: "Mix1111111111111111111111111111111111111111",
+    // }).signers([payer]).rpc();
 }
 
 deploy()
