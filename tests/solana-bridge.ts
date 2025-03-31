@@ -200,7 +200,7 @@ describe("solana-bridge", () => {
     });
 
     it("sol", async () => {
-        await program.methods.cashOutSol(new BN(101), new BN(10000)).accountsPartial({
+        await program.methods.cashOutSol(new BN(101), anotherPayer.publicKey, new BN(10000)).accountsPartial({
             payer: anotherPayer.publicKey,
             chainConfig: solChainConfig,
         }).signers([anotherPayer]).rpc();
