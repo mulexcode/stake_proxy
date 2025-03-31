@@ -21,8 +21,8 @@ pub mod solana_bridge {
         cash_out::handler(ctx, args)
     }
 
-    pub fn cash_out_sol(ctx: Context<CashOutSolAccount>, chain_id: u64,  amount: u64) -> Result<()> {
-        cash_out_sol::handler(ctx, chain_id, amount)
+    pub fn cash_out_sol(ctx: Context<CashOutSolAccount>, chain_id: u64, target: Pubkey,  amount: u64) -> Result<()> {
+        cash_out_sol::handler(ctx, chain_id, target, amount)
     }
 
     pub fn enable_chain(ctx: Context<EnableChainAccount>, chain_id: u64) -> Result<()> {

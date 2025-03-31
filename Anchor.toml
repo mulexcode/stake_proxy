@@ -13,8 +13,8 @@ stake_proxy = "StakePPyu7cgbWngmEhW5Gr86D9x1HZoseKy2JFTNbP"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://test-mixscan.island3.io/rpc"
-#cluster = "Localnet"
+#cluster = "https://test-mixscan.island3.io/rpc"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
@@ -22,3 +22,5 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 init = "ts-node -P ./tsconfig.json scripts/init.ts"
 cash_out = "ts-node -P ./tsconfig.json scripts/cash_out.ts"
 update_manager = "ts-node -P ./tsconfig.json scripts/update_manager.ts"
+init_dev = "ts-node -P ./tsconfig.json scripts/init_dev.ts"
+cash_out_sol = "ts-node -P ./tsconfig.json scripts/cash_out_sol.ts"

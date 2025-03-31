@@ -27,43 +27,33 @@ async function deploy() {
     const payer = anchor.Wallet.local().payer;
 
     const ethAddress = "248449e216aa3f7c4700969fcc5b258b5335170b";
-    //const ethAddress = "bd18C7721776CE9C9e4dA7C976332D1070dc8ACD";
+    //const ethAddress = "bd18C7721776CE9C9e4dA7C976332D1070dc8ACD"; // TEST
 
 
-    const initializeTx = await program.methods.initialize(new BN(8888), payer.publicKey, uint8ToNumberArray(Buffer.from(ethAddress, 'hex'))).accountsPartial({
+    const initializeTx = await program.methods.initialize(new BN(103), payer.publicKey, uint8ToNumberArray(Buffer.from(ethAddress, 'hex'))).accountsPartial({
         nativeTokenVault: nativeVault,
         payer: payer.publicKey,
     }).instruction();
     //
-    const enable103 = await program.methods.enableChain(new BN(103)).accountsPartial({
-        payer: payer.publicKey,
-    }).instruction();
-
-    const enable11155111 = await program.methods.enableChain(new BN(11155111)).accountsPartial({
+    const enable8888 = await program.methods.enableChain(new BN(8888)).accountsPartial({
         payer: payer.publicKey,
     }).instruction();
 
     const enableMix = await program.methods.enableToken("mix").accountsPartial({
         payer: payer.publicKey,
-        tokenMint: "Mix1111111111111111111111111111111111111111",
+        tokenMint: "MixSFCPowwkjcBKjBhEsQQkKtvpy7kMVkEEA2mF46JM",
     }).instruction();
 
     const enableSol = await program.methods.enableToken("sol").accountsPartial({
         payer: payer.publicKey,
-        tokenMint: "Mix1111111111111111111111111111111111111111",
+        tokenMint: "So11111111111111111111111111111111111111112",
     }).instruction();
 
-    const enableEth = await program.methods.enableToken("eth").accountsPartial({
-        payer: payer.publicKey,
-        tokenMint: "ETH1111111111111111111111111111111111111111",
-    }).instruction();
     let tx = new anchor.web3.Transaction().add(
-        // initializeTx,
-        // enable103,
-        enable11155111,
-        // enableMix,
-        // enableSol,
-        enableEth
+        initializeTx,
+        enable8888,
+        enableMix,
+        enableSol,
     );
     console.log(
         `txhash: ${await anchor.getProvider().sendAndConfirm(tx, [payer])}`,

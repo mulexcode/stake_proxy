@@ -38,7 +38,7 @@ pub struct CashOutSolAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CashOutSolAccount>, target_chain_id: u64, amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<CashOutSolAccount>, target_chain_id: u64, target: Pubkey, amount: u64) -> Result<()> {
     let transfer_cpi_accounts = system_program::Transfer {
         from: ctx.accounts.payer.to_account_info(),
         to: ctx.accounts.native_token_vault.to_account_info(),
@@ -51,7 +51,7 @@ pub fn handler(ctx: Context<CashOutSolAccount>, target_chain_id: u64, amount: u6
         nonce: ctx.accounts.chain_config.cash_out_nonce,
         token_name: SOL_TOKEN_NAME.to_string(),
         from: ctx.accounts.payer.key(),
-        target: ctx.accounts.native_token_vault.key().to_string(),
+        target: target.to_string(),
         target_chain_id: ctx.accounts.chain_config.chain_id,
         amount,
         chain_id: ctx.accounts.config.chain_id,
