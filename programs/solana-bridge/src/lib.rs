@@ -48,6 +48,10 @@ pub mod solana_bridge {
     pub fn update_manager(ctx: Context<UpdateManagerAccount>, manager: Pubkey, secp256k1_manager: [u8; 20]) -> Result<()> {
         update_manager::handler(ctx, manager, secp256k1_manager)
     }
+
+    pub fn update_nonce(ctx: Context<UpdateNonceAccount>, chain_id: u64, nonce: u64, is_payout_nonce: bool) -> Result<()> {
+        update_nonce::handler(ctx, chain_id, nonce, is_payout_nonce)
+    }
 }
 
 

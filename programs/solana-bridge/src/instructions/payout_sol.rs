@@ -97,6 +97,7 @@ pub fn handler(ctx: Context<PayoutSolAccount>, args: PayoutSolArgs) -> Result<()
 
     utils::verify_secp256k1_ix(
         &secp256k1_instruction,
+        secp256k1_index as u8,
         &ctx.accounts.config.secp256k1_manager,
         message.as_ref(),
         args.signature.as_slice(),

@@ -35,6 +35,10 @@ async function deploy() {
         payer: payer.publicKey,
     }).instruction();
     //
+    const enable11155111 = await program.methods.enableChain(new BN(11155111)).accountsPartial({
+        payer: payer.publicKey,
+    }).instruction();
+
     const enable8888 = await program.methods.enableChain(new BN(8888)).accountsPartial({
         payer: payer.publicKey,
     }).instruction();
@@ -50,10 +54,11 @@ async function deploy() {
     }).instruction();
 
     let tx = new anchor.web3.Transaction().add(
-        initializeTx,
-        enable8888,
-        enableMix,
-        enableSol,
+        // initializeTx,
+        // enable8888,
+        // enableMix,
+        // enableSol,
+        enable11155111
     );
     console.log(
         `txhash: ${await anchor.getProvider().sendAndConfirm(tx, [payer])}`,

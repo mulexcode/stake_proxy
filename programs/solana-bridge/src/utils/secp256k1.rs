@@ -6,7 +6,7 @@ use crate::error::ErrorCode;
 use std::convert::TryInto;
 
 /// Verify Secp256k1Program instruction fields
-pub fn verify_secp256k1_ix(ix: &Instruction, eth_address: &[u8; 20], msg: &[u8], sig: &[u8], recovery_id: u8) -> Result<()> {
+pub fn verify_secp256k1_ix(ix: &Instruction, instruction_index: u8, eth_address: &[u8; 20], msg: &[u8], sig: &[u8], recovery_id: u8) -> Result<()> {
     if  ix.program_id       != SECP256K1_ID                 ||  // The program id we expect
         ix.accounts.len()   != 0                            ||  // With no context accounts
         ix.data.len()       != (12 + 20 + 64 + 1 + msg.len())   // And data of this size
@@ -14,13 +14,13 @@ pub fn verify_secp256k1_ix(ix: &Instruction, eth_address: &[u8; 20], msg: &[u8],
         return Err(ErrorCode::SigVerificationFailed.into());    // Otherwise, we can already throw err
     }
 
-    check_secp256k1_data(&ix.data, eth_address, msg, sig, recovery_id)?; // If that's not the case, check data
+    check_secp256k1_data(instruction_index, &ix.data, eth_address, msg, sig, recovery_id)?; // If that's not the case, check data
 
     Ok(())
 }
 
 /// Verify serialized Secp256k1Program instruction data
-pub fn check_secp256k1_data(data: &[u8], eth_address: &[u8; 20], msg: &[u8], sig: &[u8], recovery_id: u8) -> Result<()> {
+pub fn check_secp256k1_data(instruction_index: u8, data: &[u8], eth_address: &[u8; 20], msg: &[u8], sig: &[u8], recovery_id: u8) -> Result<()> {
     // According to this layout used by the Secp256k1Program
     // https://github.com/solana-labs/solana-web3.js/blob/master/src/secp256k1-program.ts#L49
 
@@ -57,14 +57,14 @@ pub fn check_secp256k1_data(data: &[u8], eth_address: &[u8; 20], msg: &[u8], sig
     // Header
     if  num_signatures                  != &exp_num_signatures.to_le_bytes()         ||
         signature_offset                != &exp_signature_offset.to_le_bytes()       ||
-        signature_instruction_index     != &[0]                                      ||
+        signature_instruction_index     != &[instruction_index]                                      ||
         eth_address_offset              != &exp_eth_address_offset.to_le_bytes()     ||
-        eth_address_instruction_index   != &[0]                                      ||
+        eth_address_instruction_index   != &[instruction_index]                                      ||
         message_data_offset             != &exp_message_data_offset.to_le_bytes()    ||
         message_data_size               != &msg_len.to_le_bytes()                    ||
-        message_instruction_index       != &[0]
+        message_instruction_index       != &[instruction_index]
     {
-        return Err(ErrorCode::SigVerificationFailed.into());
+        return Err(ErrorCode::SigVerificationFailed2.into());
     }
 
     // Arguments
@@ -73,7 +73,11 @@ pub fn check_secp256k1_data(data: &[u8], eth_address: &[u8; 20], msg: &[u8], sig
         data_recovery_id    != &[recovery_id]   ||
         data_msg            != msg
     {
-        return Err(ErrorCode::SigVerificationFailed.into());
+        msg!("{:?}-{:?}", data_eth_address, eth_address);
+        msg!("{:?}-{:?}", data_sig, sig);
+        msg!("{:?}-{:?}", data_recovery_id, recovery_id);
+        msg!("{:?}-{:?}", data_msg, msg);
+        return Err(ErrorCode::SigVerificationFailed3.into());
     }
 
     Ok(())

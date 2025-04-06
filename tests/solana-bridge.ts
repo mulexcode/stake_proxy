@@ -144,7 +144,7 @@ describe("solana-bridge", () => {
             stakeMintKeyPair.publicKey, // mint
             anotherPayer.publicKey, // owner
         );
-        const message = gen_message(BigInt(1), new Uint8Array([1,2,3,4,5,6,7,8]), "test", ata.address, BigInt(1000000), 1);
+        const message = gen_message(BigInt(0), new Uint8Array([1,2,3,4,5,6,7,8]), "test", anotherPayer.publicKey, BigInt(1000000), 1);
         const signature = secp256k1.sign(keccak256(message).toString("hex"), ethWallet.getPrivateKey());
 
         console.log(ethWallet.getPrivateKey().toString("hex"), message.toString("hex"), signature.toCompactHex(), signature.recovery)
@@ -164,7 +164,7 @@ describe("solana-bridge", () => {
             amount: new BN(1000000),
             fromChainId: new BN(1),
             magic: [1,2,3,4,5,6,7,8],
-            nonce: new BN(1),
+            nonce: new BN(0),
             signature: uint8ToNumberArray(hexToBytes(signature.toCompactHex())),
             recoveryId: signature.recovery,
         }).accountsPartial({
@@ -173,6 +173,7 @@ describe("solana-bridge", () => {
             tokenMint: stakeMintKeyPair.publicKey,
             tokenConfig: tokenConfig,
             instructionSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+            target: anotherPayer.publicKey,
         }).instruction();
 
         let tx = new anchor.web3.Transaction().add(

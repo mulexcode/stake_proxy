@@ -8,6 +8,8 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::state::{SystemConfig, ChainConfig, TokenConfig};
 use anchor_lang::solana_program::sysvar;
 use anchor_lang::solana_program::sysvar::instructions::{load_current_index_checked, load_instruction_at_checked};
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::associated_token::spl_associated_token_account::instruction::create_associated_token_account;
 use crate::constants::*;
 use crate::error::ErrorCode;
 use crate::utils;
@@ -54,15 +56,24 @@ pub struct PayoutAccount<'info> {
     pub native_token_vault: AccountInfo<'info>,
 
     #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut)]
     pub token_mint: Account<'info, Mint>,
-    #[account(mut,
-        token::mint = token_mint,
+    #[account(init_if_needed, payer = payer,
+        associated_token::mint = token_mint,
+        associated_token::authority = target,
     )]
     pub token_receiver: Account<'info, TokenAccount>,
+    
+    /// CHECK: no need
+    pub target: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     /// CHECK: check its id
     #[account(address = sysvar::instructions::id())]
     pub instruction_sysvar: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -97,7 +108,7 @@ pub fn handler(ctx: Context<PayoutAccount>, args: PayoutArgs) -> Result<()> {
     message.extend_from_slice(args.magic.as_slice());
     message.extend_from_slice(&args.nonce.to_le_bytes());
     message.extend_from_slice(args.token_name.as_bytes());
-    message.extend_from_slice(&ctx.accounts.token_receiver.key().to_bytes());
+    message.extend_from_slice(&ctx.accounts.target.key().to_bytes());
     message.extend_from_slice(&args.amount.to_le_bytes());
     message.extend_from_slice(&args.from_chain_id.to_le_bytes());
     // let message_hash = hash(&message);
@@ -110,6 +121,7 @@ pub fn handler(ctx: Context<PayoutAccount>, args: PayoutArgs) -> Result<()> {
 
     utils::verify_secp256k1_ix(
         &secp256k1_instruction,
+        secp256k1_index as u8,
         &ctx.accounts.config.secp256k1_manager,
         message.as_ref(),
         args.signature.as_slice(),
